@@ -6,4 +6,7 @@ PSP CEX2DEX Converter homebrew
 * Run the program and press O
 
 ## Uninstall:
+* Run the program and press O
+
+or
 * Restore your NAND dump via [DDC](https://github.com/balika011/DC-M33/releases/latest)
