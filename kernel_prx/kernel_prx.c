@@ -3,7 +3,7 @@
 #include <pspidstorage.h>
 #include <string.h> // memset()
 
-PSP_MODULE_INFO("kernel_prx", 0x1006, 2, 0);
+PSP_MODULE_INFO("kernel_prx", 0x1006, 3, 0);
 PSP_MAIN_THREAD_ATTR(0);
 
 int module_start(SceSize args, void *argp) {
@@ -11,6 +11,15 @@ int module_start(SceSize args, void *argp) {
 }
 
 int sceIdStorageCreateLeaf(u16 key);
+int sceIdStorageDeleteLeaf(u16 key);
+
+int prxIdStorageDeleteLeaf(u16 key) {
+	u32 k1 = pspSdkSetK1(0);
+	int ret = sceIdStorageDeleteLeaf(key);
+	sceIdStorageFlush();
+	pspSdkSetK1(k1);
+	return ret;
+}
 
 int prxIdStorageLookup(u16 key, u32 offset, void *buf, u32 len) {
 	u32 k1 = pspSdkSetK1(0);

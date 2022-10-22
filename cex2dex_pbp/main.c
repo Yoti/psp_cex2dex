@@ -5,7 +5,7 @@
 #include <string.h> // mem*()
 
 #define VER_MAJOR 1
-#define VER_MINOR 0
+#define VER_MINOR 1
 #define VER_BUILD ""
 
 #define VAL_LENGTH 0x10
@@ -51,14 +51,12 @@ void ContCircle(void) {
 	}
 }
 
-
 void ExitCross(char*text) {
 	printf("%s, press X to exit...\n", text);
 	do {
 		sceCtrlReadBufferPositive(&pad, 1);
 		sceKernelDelayThread(0.05*1000*1000);
-	}
-	while(!(pad.Buttons & PSP_CTRL_CROSS));
+	} while(!(pad.Buttons & PSP_CTRL_CROSS));
 	sceKernelExitGame();
 }
 
@@ -68,21 +66,32 @@ void ExitError(char*text, int delay, int error) {
 	sceKernelExitGame();
 }
 
-void BackupKey(u16 from, u16 to) {
+void DeleteLeaf(u16 from) {
 	unsigned char key_buffer[512];
 
-	printf(" Backing up 0x%x to 0x%x... ", from, to);
-	if (prxIdStorageReadLeaf(to, key_buffer) == 0x80000025) {
-		if (prxIdStorageReadLeaf(from, key_buffer) == 0) {
-			if (prxIdStorageWriteLeaf(to, key_buffer) == 0) {
-				printf("OK");
-			} else {
-				printf("NG");
-				ExitCross("\nAborting");
-			}
+	printf(" Removing 0x%03x... ", from);
+	if (prxIdStorageReadLeaf(from, key_buffer) == 0) {
+		if (prxIdStorageDeleteLeaf(from) == 0) {
+			printf("OK");
+		} else {
+			printf("NG");
+			ExitCross("\nAborting");
 		}
-	} else {
-		printf("skipped");
+	}
+	printf("\n");
+}
+
+void WriteLeaf(u16 from, u16 to) {
+	unsigned char key_buffer[512];
+
+	printf(" Writing 0x%03x to 0x%03x... ", from, to);
+	if (prxIdStorageReadLeaf(from, key_buffer) == 0) {
+		if (prxIdStorageWriteLeaf(to, key_buffer) == 0) {
+			printf("OK");
+		} else {
+			printf("NG");
+			ExitCross("\nAborting");
+		}
 	}
 	printf("\n");
 }
@@ -113,7 +122,9 @@ int main(int argc, char*argv[]) {
 	if (mod < 0)
 		ExitError("Error: LoadStart() returned 0x%08x\n", 3, mod);
 
-	prxIdStorageLookup(key_number, key_offset, idps_buffer, sizeof(idps_buffer));
+	if (prxIdStorageLookup(key_number, key_offset, idps_buffer, sizeof(idps_buffer)) != 0) {
+		ExitCross("Lookup() error");
+	}
 
 	printf(" Your IDPS is: ");
 	for (i=0; i<VAL_PUBLIC; i++) {
@@ -147,8 +158,7 @@ int main(int argc, char*argv[]) {
 	pspDebugScreenSetTextColor(0xFF0000FF); // red
 	if (idps_buffer[0x04] == 0x00)
 		printf("PlayStation Portable");
-	else if (idps_buffer[0x04] == 0x01) // psv, vtv/pstv
-	{
+	else if (idps_buffer[0x04] == 0x01) { // psv, vtv/pstv
 		if (idps_buffer[0x06] == 0x00)
 			printf("PlayStation Vita"); // fatWF/fat3G, slim
 		else if (idps_buffer[0x06] == 0x02)
@@ -157,18 +167,16 @@ int main(int argc, char*argv[]) {
 			printf("PlayStation/Vita TV"); // vtv, pstv (testkit)
 		else
 			printf("Unknown Vita 0x%02X", idps_buffer[0x06]);
-	}
-	else
+	} else {
 		printf("Unknown PS 0x%02X", idps_buffer[0x04]);
+	}
 	pspDebugScreenSetTextColor(0xFFFFFFFF); // white
 	printf("\n");
 
 	printf(" Your motherboard is ");
 	pspDebugScreenSetTextColor(0xFF00FF00); // green
-	if (idps_buffer[0x06] == 0x00) // portable
-	{
-		switch(idps_buffer[0x07])
-		{
+	if (idps_buffer[0x06] == 0x00) { // portable
+		switch(idps_buffer[0x07]) {
 			case 0x01:
 				printf("TA-079/081 (PSP-1000)");
 				break;
@@ -213,11 +221,8 @@ int main(int argc, char*argv[]) {
 				printf("Unknown MoBo 0x%02X", idps_buffer[0x07]);
 				break;
 		}
-	}
-	else if ((idps_buffer[0x06] == 0x02) || (idps_buffer[0x06] == 0x06)) // home system
-	{
-		switch(idps_buffer[0x07])
-		{
+	} else if ((idps_buffer[0x06] == 0x02) || (idps_buffer[0x06] == 0x06)) { // home system
+		switch(idps_buffer[0x07]) {
 			case 0x01:
 				printf("DOL-1001 (VTE-1000)");
 				break;
@@ -228,16 +233,15 @@ int main(int argc, char*argv[]) {
 				printf("Unknown MoBo 0x%02X", idps_buffer[0x07]);
 				break;
 		}
-	}
-	else
+	} else {
 		printf("Unknown type 0x%02X", idps_buffer[0x06]);
+	}
 	pspDebugScreenSetTextColor(0xFFFFFFFF); // white
 	printf("\n");
 
 	printf(" And your region is ");
 	pspDebugScreenSetTextColor(0xFFFF0000); // blue
-	switch(idps_buffer[0x05])
-	{
+	switch(idps_buffer[0x05]) {
 		case 0x00:
 			printf("Proto");
 			break;
@@ -295,7 +299,7 @@ int main(int argc, char*argv[]) {
 	printf("\n\n");
 
 	if (prxIdStorageReadLeaf(key_number, key_buffer) != 0) {
-		ExitCross("ReadLeaf error");
+		ExitCross("ReadLeaf() error");
 	}
 	if (key_buffer[key_offset+0x06] > 0) {
 		ExitCross("Wrong console");
@@ -304,48 +308,66 @@ int main(int argc, char*argv[]) {
 		ExitCross("Wrong generation");
 	}
 	if (key_buffer[key_offset+0x05] < 3) {
-		ExitCross("Already converted");
+		for (i = 0; i < 3; i++) {
+			if (prxIdStorageReadLeaf(0x150 + i, key_buffer) != 0) {
+				printf(" Backup key 0x%03x is missing!\n", 0x150 + i);
+				ExitCross("Can't uninstall");
+			}
+			if (prxIdStorageReadLeaf(0x170 + i, key_buffer) != 0) {
+				printf(" Backup key 0x%03x is missing!\n", 0x170 + i);
+				ExitCross("Can't uninstall");
+			}
+		}
+		printf("Do you want to uninstall TestKit certificate?\n");
+		ContCircle();
+		for (i = 0; i < 3; i++) {
+			WriteLeaf(0x150 + i, 0x100 + i);
+			WriteLeaf(0x170 + i, 0x120 + i);
+		}
+		printf("\n");
+		sceKernelDelayThread(1 * 1000 * 1000);
+		printf("Do you want to remove backup IDStorage leafs?\n");
+		ContCircle();
+		for (i = 0; i < 3; i++) {
+			DeleteLeaf(0x150 + i);
+			DeleteLeaf(0x170 + i);
+		}
+		printf("\n");
+
+		printf("https://github.com/yoti/psp_cex2dex/\n");
+
+		ExitCross("\nDone");
 	}
 
+	printf("Do you want to convert your PSP to TestKit?\n");
 	ContCircle();
 
 	for (i = 0; i < 3; i++) {
-		BackupKey(0x100 + i, 0x150 + i);
-		BackupKey(0x120 + i, 0x170 + i);
+		WriteLeaf(0x100 + i, 0x150 + i);
+		WriteLeaf(0x120 + i, 0x170 + i);
 	}
 
-	//prxIdStorageReadLeaf(key_number, key_buffer);
-	printf(" Old HMAC: ");
-	for (i = 0; i < 16; i++)
-		printf("%02x", key_buffer[key_offset + 0xA8 + i]);
-	printf("\n");
-
+	prxIdStorageReadLeaf(key_number, key_buffer);
 	memcpy(crt_buf_A8, key_buffer + key_offset, sizeof(crt_buf_A8));
 	memset(crt_buf_B8, 0, sizeof(crt_buf_B8));
 	zeco(fuseid, crt_buf_A8, crt_buf_B8);
-	printf(" Ret HMAC: ");
-	for (i = 0; i < 16; i++)
-		printf("%02x", crt_buf_B8[0xA8 + i]);
+	printf(" Checking current certificate... ");
 	if (cmpstr(&key_buffer[key_offset + 0xA8], &crt_buf_B8[0xA8], 16) == 0) {
-		printf(" OK");
+		printf("OK");
 	} else {
-		printf(" NG");
+		printf("NG");
 		ExitCross("\nAborting");
 	}
 	printf("\n");
 
 	memcpy(crt_buf_A8, key_buffer + key_offset, sizeof(crt_buf_A8));
 	memset(crt_buf_B8, 0, sizeof(crt_buf_B8));
-	printf(" Will patch from 0x%02x to 0x02\n", crt_buf_A8[5]);
+	printf(" Will patch from 0x%02x to 0x02\n\n", crt_buf_A8[5]);
 	crt_buf_A8[5] = 0x02;
 	zeco(fuseid, crt_buf_A8, crt_buf_B8);
-	printf(" New HMAC: ");
-	for (i = 0; i < 16; i++)
-		printf("%02x", crt_buf_B8[0xA8 + i]);
 	memcpy(key_buffer + key_offset, crt_buf_B8, sizeof(crt_buf_B8));
 	prxIdStorageWriteLeaf(key_number, key_buffer);
 	prxIdStorageWriteLeaf(key_number+0x20, key_buffer);
-	printf("\n\n");
 
 	printf(" https://github.com/yoti/psp_cex2dex/\n");
 
