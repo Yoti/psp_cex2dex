@@ -5,7 +5,7 @@
 #include <string.h> // mem*()
 
 #define VER_MAJOR 1
-#define VER_MINOR 1
+#define VER_MINOR 2
 #define VER_BUILD ""
 
 #define VAL_LENGTH 0x10
@@ -303,9 +303,6 @@ int main(int argc, char*argv[]) {
 	}
 	if (key_buffer[key_offset+0x06] > 0) {
 		ExitCross("Wrong console");
-	}
-	if (key_buffer[key_offset+0x07] > 4) {
-		ExitCross("Wrong generation");
 	}
 	if (key_buffer[key_offset+0x05] < 3) {
 		for (i = 0; i < 3; i++) {
