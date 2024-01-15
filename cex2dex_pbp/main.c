@@ -4,9 +4,9 @@
 #include <stdio.h> // sprintf()
 #include <string.h> // mem*()
 
-#define VER_MAJOR 1
-#define VER_MINOR 2
-#define VER_BUILD ""
+#define VER_MAJOR 2
+#define VER_MINOR 0
+#define VER_BUILD "-QA"
 
 #define VAL_LENGTH 0x10
 #define VAL_PUBLIC 0x0A
@@ -361,6 +361,8 @@ int main(int argc, char*argv[]) {
 	memset(crt_buf_B8, 0, sizeof(crt_buf_B8));
 	printf(" Will patch from 0x%02x to 0x02\n\n", crt_buf_A8[5]);
 	crt_buf_A8[5] = 0x02;
+	printf(" Will patch from 0x%02x to 0x8C\n\n", crt_buf_A8[8]);
+	crt_buf_A8[8] = 0x8C;
 	zeco(fuseid, crt_buf_A8, crt_buf_B8);
 	memcpy(key_buffer + key_offset, crt_buf_B8, sizeof(crt_buf_B8));
 	prxIdStorageWriteLeaf(key_number, key_buffer);
