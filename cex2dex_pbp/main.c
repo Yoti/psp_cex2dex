@@ -1,6 +1,8 @@
-#include <pspsdk.h>
-#include <pspkernel.h>
-#include <pspctrl.h> // sceCtrl*()
+#ifdef PSP
+	#include <pspsdk.h>
+	#include <pspkernel.h>
+	#include <pspctrl.h> // sceCtrl*()
+#endif
 #include <stdio.h> // sprintf()
 #include <string.h> // mem*()
 
@@ -12,12 +14,57 @@
 #define VAL_PUBLIC 0x0A
 #define VAL_PRIVATE 0x06
 
-PSP_MODULE_INFO("cex2dex", 0, VER_MAJOR, VER_MINOR);
-PSP_MAIN_THREAD_ATTR(0);
-PSP_HEAP_SIZE_KB(1024);
+#ifdef PSP
+	PSP_MODULE_INFO("cex2dex", 0, VER_MAJOR, VER_MINOR);
+	PSP_MAIN_THREAD_ATTR(0);
+	PSP_HEAP_SIZE_KB(1024);
 
-#include "../kernel_prx/kernel_prx.h"
-#define printf pspDebugScreenPrintf
+	#include "../kernel_prx/kernel_prx.h"
+	#define printf pspDebugScreenPrintf
+#else
+	int prxIdStorageDeleteLeaf(u16 key) {
+		u8 name[255];
+		sprintf(name, "keys\\0x%04X.bin", key);
+		return remove(name);
+	}
+	int prxIdStorageLookup(u16 key, u32 offset, void *buf, u32 len) {
+		FILE *fp;
+		u8 name[255];
+		sprintf(name, "keys\\0x%04X.bin", key);
+		if ((fp = fopen(name, "rb")) == NULL) {
+			return -1;
+		}
+		fseek(fp, offset, SEEK_SET);
+		fread(buf, len, 1, fp);
+		fclose(fp);
+		return 0;
+	}
+	int prxIdStorageReadLeaf(u16 key, void *buf) {
+		FILE *fp;
+		u8 name[255];
+		sprintf(name, "keys\\0x%04X.bin", key);
+		if ((fp = fopen(name, "rb")) == NULL) {
+			return -1;
+		}
+		fread(buf, 512, 1, fp);
+		fclose(fp);
+		return 0;
+	}
+	int prxIdStorageWriteLeaf(u16 key, void *buf) {
+		FILE *fp;
+		u8 name[255];
+		sprintf(name, "keys\\0x%04X.bin", key);
+		if ((fp = fopen(name, "wb")) == NULL) {
+			return -1;
+		}
+		fwrite(buf, 512, 1, fp);
+		fclose(fp);
+		return 0;
+	}
+	u64 prxSysregGetFuseId(void) {
+		return 0x0UL;
+	}
+#endif
 
 #define key_number 0x0100 // 100/120, 101/121
 #define key_offset 0x0038 // 100@38, 100@f0, 100@1a8, 101@60, 101@118
@@ -195,9 +242,9 @@ int main(int argc, char*argv[]) {
 			case 0x06:
 				printf("TA-093 (PSP-3000)");
 				break;
-			//case 0x07:
-			//	printf("TA-094 (PSP-N1000)");
-			//	break;
+			case 0x07:
+				printf("TA-094 (PSP-N1000)");
+				break;
 			case 0x08:
 				printf("TA-095 (PSP-3000)");
 				break;
